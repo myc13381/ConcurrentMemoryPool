@@ -1,0 +1,4 @@
+# ignore ./ConcurrentMemoryPool/.vs  ./ConcurrentMemoryPool/Debug ./ConcurrentMemoryPool/Release
+ConcurrentMemoryPool/.vs
+ConcurrentMemoryPool/Debug
+ConcurrentMemoryPool/Release
