@@ -32,8 +32,8 @@ static std::pair<size_t, size_t> BenchmarkMalloc(size_t ntimes, size_t nworks, s
 				free_costtime += end2 - begin2;
 			}
 		});
-		vthread[k].join();
 	}
+	for (size_t k = 0; k < nworks; ++k) vthread[k].join();
 
 #ifdef SHOWTIME
 	printf("%u个线程并发执行%u轮次，每轮次malloc %u次: 花费：%u ms\n", nworks, rounds, ntimes, malloc_costtime);
@@ -74,8 +74,10 @@ static std::pair<size_t,size_t> BenchmarkConcurrentMalloc(size_t ntimes, size_t 
 				free_costtime += end2 - begin2;
 			}
 		});
-		vthread[k].join();
 	}
+
+	for (size_t k = 0; k < nworks; ++k) vthread[k].join();
+
 #ifdef SHOWTIME
 	printf("%u个线程并发执行%u轮次，每轮次concurrent alloc %u次: 花费：%u ms\n", nworks, rounds, ntimes, malloc_costtime);
 	printf("%u个线程并发执行%u轮次，每轮次concurrent dealloc %u次: 花费：%u ms\n",nworks, rounds, ntimes, free_costtime);

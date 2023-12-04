@@ -14,7 +14,7 @@ Span* PageCache::AllocBigPageObj(size_t size)
 	{
 		Span* span = NewSpan(npage);
 		span->_objsize = size;
-		span->_usecount = 1;//一次使用
+		span->_usecount = 1;
 		return span;
 	}
 	else//超过128页，向系统申请
@@ -41,8 +41,6 @@ void PageCache::FreeBigPageObj(void* ptr, Span* span)
 	size_t npage = span->_objsize >> PAGE_SHIFT;
 	if (npage < NPAGES) //相当于还是小于128页
 	{
-		span->_objsize = 0;
-		span->_usecount = 0;
 		ReleaseSpanToPageCache(span);
 	}
 	else
@@ -70,7 +68,12 @@ Span* PageCache::_NewSpan(size_t n)
 {
 	assert(n < NPAGES);
 	if (!_spanlist[n].Empty())
-		return _spanlist[n].PopFront();
+	{
+		Span* span =_spanlist[n].PopFront();
+		span->_usecount = 1;
+		return span;
+	}
+		
 
 	for (size_t i = n + 1; i < NPAGES; ++i)
 	{
@@ -83,13 +86,12 @@ Span* PageCache::_NewSpan(size_t n)
 			splist->_pageid = span->_pageid;
 			splist->_npage = n;
 			splist->_objsize = splist->_npage << PAGE_SHIFT;
+			splist->_usecount = 1;//一次使用
+
 			span->_pageid = span->_pageid + n;
 			span->_npage = span->_npage - n;
 			span->_objsize = span->_npage << PAGE_SHIFT;
 
-			//splist->_pageid = span->_pageid + n;
-			//span->_npage = splist->_npage - n;
-			//span->_npage = n;
 
 			for (size_t j = 0; j < n; ++j)
 				_idspanmap[splist->_pageid + j] = splist;
@@ -143,6 +145,8 @@ void PageCache::ReleaseSpanToPageCache(Span* cur)
 {
 	// 必须上全局锁,可能多个线程一起从ThreadCache中归还数据
 	std::unique_lock<std::mutex> lock(_mutex);
+	cur->_objsize = 0;
+	cur->_usecount = 0;
 
 	// 向前合并
 	while (1)
@@ -164,7 +168,6 @@ void PageCache::ReleaseSpanToPageCache(Span* cur)
 		//超过128页则不合并
 		if (cur->_npage + prev->_npage > NPAGES - 1)
 			break;
-
 
 		// 先把prev从链表中移除
 		_spanlist[prev->_npage].Erase(prev);
@@ -206,6 +209,7 @@ void PageCache::ReleaseSpanToPageCache(Span* cur)
 			break;
 
 		_spanlist[next->_npage].Erase(next);
+
 
 		cur->_npage += next->_npage;
 		//修正id->Span的映射关系

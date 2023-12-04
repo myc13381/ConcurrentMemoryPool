@@ -524,7 +524,7 @@ static inline void ConcurrentFree(void* ptr);
 
 1. 原作者项目单元测试无法通过的问题
 
-   在申请(64K,128K]内存时由于直接从ThreadCache跳跃到了PageCache，但是申请Span对象时其_usecount属性并没有设置(修改后这里我设置为1)，导致在归还内存时(`PageCache::ReleaseSpanToPageCache`函数中)`if (it->second->_usecount != 0) break;`条件判断失去意义，进而导致`SpanList::Earse`函数执行出现bug。
+   在申请(64K,128K]内存时由于直接从ThreadCache跳跃到了PageCache，但是申请Span对象时其_usecount属性并没有设置(修改后这里我设置为1)，导致在归还内存时(`PageCache::ReleaseSpanToPageCache`函数中)`if (it->second->_usecount != 0) break;`条件判断失去意义，进而导致`SpanList::Earse`函数执行出现bug。解决方法是在合适时机(上锁之后)更新\_usecount的值。
 
 2. 观察到申请小于等于64K内存单元时都是从PageCache->CentralCache->ThreadCache，但是最终PageCache并没有释放通过系统函数`VirtualAlloc`申请的函数。可能导致内存泄漏？
 
@@ -541,8 +541,6 @@ static inline void ConcurrentFree(void* ptr);
    ```
 
    
-
-3. BenchMark.cpp测试中将线程的join函数调用紧接在创建之后，否则在进行128K及以上内存申请释放时会出错。
 
    ---
 
