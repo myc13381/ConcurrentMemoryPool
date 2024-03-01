@@ -1,0 +1,5 @@
+ConcurrentMemoryPool/.vs
+ConcurrentMemoryPool/Debug
+ConcurrentMemoryPool/Release
+.vscode/
+build/
