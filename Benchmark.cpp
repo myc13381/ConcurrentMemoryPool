@@ -123,7 +123,7 @@ int main()
 	int rounds = 5;//执行的轮次
 	int mem_size = 16 * 1024;
 	size_t arr[] = {1024*1024,1024*512,1024*128,1024*64,1024*32,1024,512,128,64,16,4};
-	
+	//test(ntimes, nthreads, rounds, 1024*1024);
 	for (size_t val : arr)
 	{
 		test(ntimes, nthreads, rounds, val);

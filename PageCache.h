@@ -2,7 +2,8 @@
 
 #include "Common.h"
 #include <unistd.h>
-#include <sys/mman.h>
+#include <vector>
+//#include <sys/mman.h>
 
 //对于Page Cache也要设置为单例，对于Central Cache获取span的时候
 //每次都是从同一个page数组中获取span
@@ -34,14 +35,16 @@ private:
 	std::unordered_map<PageID, Span*> _idspanmap;
 	std::mutex _mutex;
 #ifdef _WIN32
-	vector<void*> _ptr_record;
+	std::vector<void*> _ptr_record;
 #elif __linux__
 	void *_origin_brk;
 #endif
 private:
 	PageCache()
 	{
-#ifdef __linux__
+#ifdef _WIN32
+	this->_ptr_record.resize(1000000);
+#elif __linux__
 	this->_origin_brk=sbrk(0);
 #endif
 	}
