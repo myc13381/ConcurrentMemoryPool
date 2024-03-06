@@ -1,6 +1,0 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.5)
-PROJECT (TEST CXX)
-SET (SRC_LIST "Benchmark.cpp" "CentralCache.cpp" "PageCache.cpp" "ThreadCache.cpp" "UnitTest.cpp")
-INCLUDE_DIRECTORIES(.)
-ADD_COMPILE_OPTIONS(-g)
-ADD_EXECUTABLE (test ${SRC_LIST})

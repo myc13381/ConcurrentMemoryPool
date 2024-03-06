@@ -52,6 +52,7 @@ void PageCache::FreeBigPageObj(void* ptr, Span* span)
 		delete span;
 #ifdef _WIN32
 		VirtualFree(ptr, 0, MEM_RELEASE);
+		this->_ptr_record.emplace_back(ptr);
 #elif __linux__
 		munmap(ptr,npage<<12);
 #endif
@@ -101,8 +102,6 @@ Span* PageCache::_NewSpan(size_t n)
 
 			for (size_t j = 0; j < n; ++j)
 				_idspanmap[splist->_pageid + j] = splist;
-
-			//_spanlist[splist->_npage].PushFront(splist);
 
 			_spanlist[span->_npage].PushFront(span);
 			return splist;
@@ -235,7 +234,10 @@ void PageCache::ReleaseSpanToPageCache(Span* cur)
 	PageCache::~PageCache()
 	{
 #ifdef _WIN32
-	for(void *ptr:this->_ptr_record) VirtualFree(ptr,0,MEM_RELEASE);
+		for(void *ptr:this->_ptr_record)
+		{
+			VirtualFree(ptr, 0, MEM_RELEASE);
+		}
 #elif __linux__
 		brk(this->_origin_brk);
 #endif
