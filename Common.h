@@ -210,7 +210,7 @@ public:
 #ifdef _WIN32
 	typedef size_t PageID;
 #else
-	typedef long long PageID;
+	typedef unsigned long long PageID;
 #endif //_WIN32
 
 //Span是一个跨度，既可以分配内存出去，也是负责将内存回收回来到PageCache合并

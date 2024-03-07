@@ -1,8 +1,13 @@
 #pragma once
 
+// 是否使用基数数作为映射结构
+// #define USE_RADIX_TREE
+
 #include "Common.h"
 #include <unistd.h>
-
+#ifdef USE_RADIX_TREE
+#include "radix_tree.hpp"
+#endif
 #ifdef __linux__
 #include <sys/mman.h>
 #endif
@@ -34,7 +39,11 @@ public:
 	~PageCache();
 private:
 	SpanList _spanlist[NPAGES];
+#ifdef USE_RADIX_TREE
+	radix_tree<std::string,Span*> _idspanmap;
+#else
 	std::unordered_map<PageID, Span*> _idspanmap;
+#endif
 	std::mutex _mutex;
 #ifdef _WIN32
 	vector<void*> _ptr_record;

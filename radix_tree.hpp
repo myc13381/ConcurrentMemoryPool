@@ -119,11 +119,13 @@ radix_tree_node<K, T, Compare>::radix_tree_node(const value_type &val, Compare& 
 template <typename K, typename T, typename Compare>
 radix_tree_node<K, T, Compare>::~radix_tree_node()
 {
+#ifndef __linux__
     it_child it;
     for (it = m_children.begin(); it != m_children.end(); ++it) {
-        delete it->second;
+            delete it->second;
     }
     delete m_value;
+#endif
 }
 
 

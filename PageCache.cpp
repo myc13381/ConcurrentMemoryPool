@@ -31,9 +31,11 @@ Span* PageCache::AllocBigPageObj(size_t size)
 		span->_npage = npage;
 		span->_pageid = (PageID)ptr >> PAGE_SHIFT;
 		span->_objsize = npage << PAGE_SHIFT;
-
+#ifdef USE_RADIX_TREE
+		_idspanmap[std::to_string(span->_pageid)] = span;
+#else
 		_idspanmap[span->_pageid] = span;
-
+#endif
 		return span;
 	}
 }
@@ -47,7 +49,11 @@ void PageCache::FreeBigPageObj(void* ptr, Span* span)
 	}
 	else
 	{
+#ifdef USE_RADIX_TREE
+		_idspanmap.erase(_idspanmap.find(std::to_string(npage)));
+#else
 		_idspanmap.erase(npage);
+#endif
 		//void* ptr = (void*)(span->_pageid << PAGE_SHIFT);//是否可以这样做然后少传递一个参数
 		delete span;
 #ifdef _WIN32
@@ -101,8 +107,11 @@ Span* PageCache::_NewSpan(size_t n)
 
 
 			for (size_t j = 0; j < n; ++j)
+#ifdef USE_RADIX_TREE
+				_idspanmap[std::to_string(splist->_pageid + j)] = splist;
+#else
 				_idspanmap[splist->_pageid + j] = splist;
-
+#endif
 			_spanlist[span->_npage].PushFront(span);
 			return splist;
 		}
@@ -123,7 +132,11 @@ Span* PageCache::_NewSpan(size_t n)
 	span->_npage = NPAGES - 1;
 
 	for (size_t i = 0; i < span->_npage; ++i)
+#ifdef USE_RADIX_TREE
+		_idspanmap[std::to_string(span->_pageid + i)] = span;
+#else
 		_idspanmap[span->_pageid + i] = span;
+#endif
 
 	_spanlist[span->_npage].PushFront(span);  //Span->_next  Span->_prev 
 	return _NewSpan(n);
@@ -134,7 +147,13 @@ Span* PageCache::MapObjectToSpan(void* obj)
 {
 	//计算页号
 	PageID id = (PageID)obj >> PAGE_SHIFT;
+
+#ifdef USE_RADIX_TREE
+	auto it = _idspanmap.find(std::to_string(id));
+#else
 	auto it = _idspanmap.find(id);
+#endif
+
 	if (it != _idspanmap.end())
 	{
 		return it->second;
@@ -158,7 +177,12 @@ void PageCache::ReleaseSpanToPageCache(Span* cur)
 	{
 		PageID curid = cur->_pageid;
 		PageID previd = curid - 1;
+
+#ifdef USE_RADIX_TREE
+		auto it = _idspanmap.find(std::to_string(previd));
+#else
 		auto it = _idspanmap.find(previd);
+#endif
 
 		// 没有找到
 		if (it == _idspanmap.end())
@@ -182,7 +206,11 @@ void PageCache::ReleaseSpanToPageCache(Span* cur)
 		//修正id->span的映射关系
 		for (PageID i = 0; i < cur->_npage; ++i)
 		{
+#ifdef USE_RADIX_TREE
+			_idspanmap[std::to_string(cur->_pageid + 1)] = prev;
+#else
 			_idspanmap[cur->_pageid + i] = prev;
+#endif
 		}
 		delete cur;
 
@@ -198,8 +226,12 @@ void PageCache::ReleaseSpanToPageCache(Span* cur)
 
 		PageID curid = cur->_pageid;
 		PageID nextid = curid + cur->_npage;
-		//std::map<PageID, Span*>::iterator it = _idspanmap.find(nextid);
+
+#ifdef USE_RADIX_TREE
+		auto it = _idspanmap.find(std::to_string(nextid));
+#else
 		auto it = _idspanmap.find(nextid);
+#endif
 
 		if (it == _idspanmap.end())
 			break;
@@ -220,7 +252,11 @@ void PageCache::ReleaseSpanToPageCache(Span* cur)
 		//修正id->Span的映射关系
 		for (PageID i = 0; i < next->_npage; ++i)
 		{
+#ifdef USE_RADIX_TREE
+			_idspanmap[std::to_string(next->_pageid + i)] = cur;
+#else
 			_idspanmap[next->_pageid + i] = cur;
+#endif
 		}
 
 		delete next;
