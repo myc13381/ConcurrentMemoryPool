@@ -1,5 +1,26 @@
 #include "PageCache.h"
 
+constexpr int SIZEOF_PAGE_ID = sizeof(PageID);
+
+// help function
+// 将 PageID 类型按照每4位保存在一个uint8_t类型中，组成一个数组
+// 例如 0x000000000000000F == 0000,0000,0000,0000,0000,0000,0000,0000,0000,0000,0000,0000,0000,0000,0000,1111 --> {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15}
+static std::vector<uint8_t> PageId2Arr(const PageID id)
+{
+	std::vector<uint8_t> ret(SIZEOF_PAGE_ID * 2, 0);
+	PageID mask = static_cast<PageID>(0xFF) << ((SIZEOF_PAGE_ID - 1) * 8);
+	for(int i=0;i<SIZEOF_PAGE_ID;++i)
+	{
+		uint8_t tempA = static_cast<uint8_t>((id & mask) >> (8 * (SIZEOF_PAGE_ID - i -1))); // 每次截取8位
+		uint8_t tempB = (tempA & 0xF0) >> 4; // 取 tempA 前4位
+		uint8_t tempC = tempA & 0x0F; // 取 tempA 后4位
+		ret[i*2] = tempB;
+		ret[i*2 + 1] = tempC;
+		mask >>= 8;
+	}
+	return ret;
+}
+
 PageCache PageCache::_inst;
 
 
@@ -32,7 +53,11 @@ Span* PageCache::AllocBigPageObj(size_t size)
 		span->_pageid = (PageID)ptr >> PAGE_SHIFT;
 		span->_objsize = npage << PAGE_SHIFT;
 #ifdef USE_RADIX_TREE
+	#ifdef USE_STRING
 		_idspanmap[std::to_string(span->_pageid)] = span;
+	#else
+		_idspanmap[PageId2Arr(span->_pageid)] = span;
+	#endif
 #else
 		_idspanmap[span->_pageid] = span;
 #endif
@@ -50,7 +75,11 @@ void PageCache::FreeBigPageObj(void* ptr, Span* span)
 	else
 	{
 #ifdef USE_RADIX_TREE
+	#ifdef USE_STRING
 		_idspanmap.erase(_idspanmap.find(std::to_string(npage)));
+	#else
+		_idspanmap.erase(_idspanmap.find(PageId2Arr(npage)));
+	#endif
 #else
 		_idspanmap.erase(npage);
 #endif
@@ -108,7 +137,11 @@ Span* PageCache::_NewSpan(size_t n)
 
 			for (size_t j = 0; j < n; ++j)
 #ifdef USE_RADIX_TREE
+	#ifdef USE_STRING
 				_idspanmap[std::to_string(splist->_pageid + j)] = splist;
+	#else
+				_idspanmap[PageId2Arr(splist->_pageid + j)] = splist;
+	#endif
 #else
 				_idspanmap[splist->_pageid + j] = splist;
 #endif
@@ -133,7 +166,11 @@ Span* PageCache::_NewSpan(size_t n)
 
 	for (size_t i = 0; i < span->_npage; ++i)
 #ifdef USE_RADIX_TREE
+	#ifdef USE_STRING
 		_idspanmap[std::to_string(span->_pageid + i)] = span;
+	#else
+		_idspanmap[PageId2Arr(span->_pageid + i)] = span;
+	#endif
 #else
 		_idspanmap[span->_pageid + i] = span;
 #endif
@@ -149,7 +186,11 @@ Span* PageCache::MapObjectToSpan(void* obj)
 	PageID id = (PageID)obj >> PAGE_SHIFT;
 
 #ifdef USE_RADIX_TREE
+	#ifdef USE_STRING
 	auto it = _idspanmap.find(std::to_string(id));
+	#else
+	auto it = _idspanmap.find(PageId2Arr(id));
+	#endif
 #else
 	auto it = _idspanmap.find(id);
 #endif
@@ -179,7 +220,11 @@ void PageCache::ReleaseSpanToPageCache(Span* cur)
 		PageID previd = curid - 1;
 
 #ifdef USE_RADIX_TREE
+	#ifdef USE_STRING
 		auto it = _idspanmap.find(std::to_string(previd));
+	#else
+		auto it = _idspanmap.find(PageId2Arr(previd));
+	#endif
 #else
 		auto it = _idspanmap.find(previd);
 #endif
@@ -207,7 +252,11 @@ void PageCache::ReleaseSpanToPageCache(Span* cur)
 		for (PageID i = 0; i < cur->_npage; ++i)
 		{
 #ifdef USE_RADIX_TREE
+	#ifdef USE_STRING
 			_idspanmap[std::to_string(cur->_pageid + 1)] = prev;
+	#else
+			_idspanmap[PageId2Arr(cur->_pageid + i)] = prev;
+	#endif
 #else
 			_idspanmap[cur->_pageid + i] = prev;
 #endif
@@ -228,7 +277,11 @@ void PageCache::ReleaseSpanToPageCache(Span* cur)
 		PageID nextid = curid + cur->_npage;
 
 #ifdef USE_RADIX_TREE
+	#ifdef USE_STRING
 		auto it = _idspanmap.find(std::to_string(nextid));
+	#else
+		auto it = _idspanmap.find(PageId2Arr(nextid));
+	#endif
 #else
 		auto it = _idspanmap.find(nextid);
 #endif
@@ -253,7 +306,11 @@ void PageCache::ReleaseSpanToPageCache(Span* cur)
 		for (PageID i = 0; i < next->_npage; ++i)
 		{
 #ifdef USE_RADIX_TREE
+	#ifdef USE_STRING
 			_idspanmap[std::to_string(next->_pageid + i)] = cur;
+	#else
+			_idspanmap[PageId2Arr(next->_pageid + i)] = cur;
+	#endif
 #else
 			_idspanmap[next->_pageid + i] = cur;
 #endif

@@ -27,7 +27,7 @@ template<>
 inline std::vector<uint8_t> radix_substr<std::vector<uint8_t>>(const std::vector<uint8_t> &key, int begin, int num)
 {
     std::vector<uint8_t> &v = const_cast<std::vector<uint8_t>&>(key);
-    std::vector<uint8_t>::iterator start = v.begin();
+    std::vector<uint8_t>::iterator start = v.begin()+begin;
     std::vector<uint8_t>::iterator end = start+num;
     return std::vector<uint8_t>(start,end);
 }

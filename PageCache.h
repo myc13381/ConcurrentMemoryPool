@@ -2,6 +2,8 @@
 
 // 是否使用基数数作为映射结构
 // #define USE_RADIX_TREE
+// 使用 string 作为 radix_tree 的键
+#define USE_STRING
 
 #include "Common.h"
 #include <unistd.h>
@@ -40,7 +42,11 @@ public:
 private:
 	SpanList _spanlist[NPAGES];
 #ifdef USE_RADIX_TREE
+	#ifdef USE_STRING
 	radix_tree<std::string,Span*> _idspanmap;
+	#else
+	radix_tree<std::vector<uint8_t>,Span*> _idspanmap;
+	#endif
 #else
 	std::unordered_map<PageID, Span*> _idspanmap;
 #endif
