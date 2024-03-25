@@ -48,7 +48,8 @@ Span* PageCache::AllocBigPageObj(size_t size)
 		if (ptr == nullptr)
 			throw std::bad_alloc();
 
-		Span* span = new Span;
+		//Span* span = new Span;
+		Span* span = this->newSpan();
 		span->_npage = npage;
 		span->_pageid = (PageID)ptr >> PAGE_SHIFT;
 		span->_objsize = npage << PAGE_SHIFT;
@@ -89,7 +90,7 @@ void PageCache::FreeBigPageObj(void* ptr, Span* span)
 		VirtualFree(ptr, 0, MEM_RELEASE);
 		this->_ptr_record.emplace_back(ptr);
 #elif __linux__
-		munmap(ptr,npage<<12);
+		munmap(ptr,npage << PAGE_SHIFT);
 #endif
 	}
 }
@@ -123,7 +124,8 @@ Span* PageCache::_NewSpan(size_t n)
 		{
 			//大内存对象拆分
 			Span* span = _spanlist[i].PopFront();
-			Span* splist = new Span;
+			// Span* splist = new Span;
+			Span* splist = this->newSpan();
 
 			splist->_pageid = span->_pageid;
 			splist->_npage = n;
@@ -150,7 +152,8 @@ Span* PageCache::_NewSpan(size_t n)
 		}
 	}
 
-	Span* span = new Span;
+	// Span* span = new Span;
+	Span* span = this->newSpan();
 
 	// 到这里说明SpanList中没有合适的span,只能向系统申请128页的内存
 #ifdef _WIN32
@@ -261,7 +264,7 @@ void PageCache::ReleaseSpanToPageCache(Span* cur)
 			_idspanmap[cur->_pageid + i] = prev;
 #endif
 		}
-		delete cur;
+		// delete cur;
 
 		// 继续向前合并
 		cur = prev;
@@ -316,7 +319,7 @@ void PageCache::ReleaseSpanToPageCache(Span* cur)
 #endif
 		}
 
-		delete next;
+		// delete next;
 	}
 
 	// 最后将合并好的span插入到span链中

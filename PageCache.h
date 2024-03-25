@@ -6,12 +6,8 @@
 #define USE_STRING
 
 #include "Common.h"
-#include <unistd.h>
 #ifdef USE_RADIX_TREE
 #include "radix_tree.hpp"
-#endif
-#ifdef __linux__
-#include <sys/mman.h>
 #endif
 
 //对于Page Cache也要设置为单例，对于Central Cache获取span的时候
@@ -37,9 +33,16 @@ public:
 	//释放空间span回到PageCache，并合并相邻的span
 	void ReleaseSpanToPageCache(Span* span);
 
+	// 获取一个新的span
+	Span* newSpan()
+	{
+		return _spanPool->getOneSpan();
+	}
+
 	//析构函数
 	~PageCache();
 private:
+	SpanPool *_spanPool;
 	SpanList _spanlist[NPAGES];
 #ifdef USE_RADIX_TREE
 	#ifdef USE_STRING
@@ -62,6 +65,7 @@ private:
 #ifdef __linux__
 	this->_origin_brk=sbrk(0);
 #endif
+	_spanPool = SpanPool::GetInstance();
 	}
 	PageCache(const PageCache&) = delete;
 	static PageCache _inst;

@@ -9,6 +9,12 @@
 #include <algorithm>
 #include <assert.h>
 
+#ifdef __linux__
+#include <sys/mman.h>
+#include <unistd.h>
+#endif
+
+
 using std::cout;
 using std::endl;
 
@@ -229,17 +235,89 @@ struct Span
 	size_t _usecount = 0;//对象使用计数,
 };
 
+
+
+#define NUM_OF_SPAN_PER_POOL 1024
+
+// 存放 Span 的池
+// 因为我们使用了 brk/sbrk，所以无法继续使用 new/delete
+// SpanPool 被设计为单例模式
+class SpanPool
+{
+public:
+    SpanPool() : _used(0), _capacity(NUM_OF_SPAN_PER_POOL), _pool(1, nullptr)
+    {
+        // 使用 mmap 申请内存
+#ifdef _WIN32
+		_pool[0] = VirtualAlloc(0, sizeof(Span) * NUM_OF_SPAN_PER_POOL, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE); 
+#elif __linux__
+		_pool[0] = mmap(nullptr, sizeof(Span) * NUM_OF_SPAN_PER_POOL, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+#endif
+        _curr = static_cast<Span*>(_pool[0]);
+    }
+    ~SpanPool()
+    {
+        for(void *ptr : _pool)
+        {
+#ifdef _WIN32
+			VirtualFree(ptr, 0, MEM_RELEASE);
+#elif __linux__
+            munmap(ptr, sizeof(Span) * NUM_OF_SPAN_PER_POOL);
+#elif _WIN32
+
+#endif
+        }
+    }
+    Span* getOneSpan()
+    {
+        Span *ret = nullptr;
+        if(_used != _capacity)
+        {
+            ++_used;
+            ret = _curr;
+            _curr += 1;
+        }
+        else
+        {
+            // 空间不够，申请新的空间
+            int n = _pool.size();
+            _pool.emplace_back(nullptr);
+#ifdef _WIN32
+			_pool[n] = VirtualAlloc(0, sizeof(Span) * NUM_OF_SPAN_PER_POOL, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+#elif __linux__
+            _pool[n] = mmap(nullptr, sizeof(Span) * NUM_OF_SPAN_PER_POOL, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+#endif
+            _curr = static_cast<Span*>(_pool[n]) + 1;
+            ++_used;
+            _capacity += NUM_OF_SPAN_PER_POOL;
+            ret = static_cast<Span*>(_pool[n]);
+        }
+        return ret;
+    }
+	static SpanPool* GetInstance()
+	{
+		static SpanPool * _instance = new SpanPool;
+		return _instance;
+	}
+private:
+    std::vector<void*> _pool;
+    Span* _curr; // 指向当前可用的Span的指针
+    size_t _capacity;
+    size_t _used;
+};
+
 //和上面的Freelist一样，各个接口自己实现，双向带头循环的Span链表
 class SpanList
 {
 public:
 	Span* _head;
 	std::mutex _mutex;
+	SpanPool *_spanPool;
 
 public:
-	SpanList()
+	SpanList(): _spanPool(SpanPool::GetInstance())
 	{
-		_head = new Span;
+		_head = _spanPool->getOneSpan();
 		_head->_next = _head;
 		_head->_prev = _head;
 	}
@@ -250,10 +328,8 @@ public:
 		while (cur != _head)
 		{
 			Span* next = cur->_next;
-			delete cur;
 			cur = next;
 		}
-		delete _head;
 		_head = nullptr;
 	}
 
