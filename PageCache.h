@@ -55,7 +55,7 @@ private:
 #endif
 	std::mutex _mutex;
 #ifdef _WIN32
-	vector<void*> _ptr_record;
+	std::vector<void*> _ptr_record;
 #elif __linux__
 	void *_origin_brk;
 #endif
