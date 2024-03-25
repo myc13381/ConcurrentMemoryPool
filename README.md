@@ -668,6 +668,8 @@ static inline void ConcurrentFree(void* ptr);
 
 4. 添加基数树 radix_tree，键radix_tree.hpp 和 exampleRadixTree.c，并使用基数树作为键值对的映射，时间性能不如哈希表，空间性能应该好于哈希表。
 
+5. 使用 mmap/VirtualAlloc 申请内存，取消了 Span 对 new 的依赖。
+
    ---
 
 ### 学习收获
